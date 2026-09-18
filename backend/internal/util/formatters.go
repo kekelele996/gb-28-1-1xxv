@@ -120,6 +120,20 @@ func AnswerResultText(r string) string {
 	}
 }
 
+// ReviewStatusText 成绩复核状态枚举 → 中文文本（pending/adjusted/rejected）。
+func ReviewStatusText(s string) string {
+	switch s {
+	case constants.ReviewStatusPending:
+		return "待复核"
+	case constants.ReviewStatusAdjusted:
+		return "已调整"
+	case constants.ReviewStatusRejected:
+		return "维持原判"
+	default:
+		return "未知复核状态"
+	}
+}
+
 // UserStatusText 用户状态枚举 → 中文文本。
 func UserStatusText(s string) string {
 	if s == constants.UserStatusActive {

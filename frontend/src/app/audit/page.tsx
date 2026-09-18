@@ -60,6 +60,7 @@ export default function AuditPage() {
             <option value="questions">题库</option>
             <option value="exams">试卷</option>
             <option value="exam-records">考试记录</option>
+            <option value="score-review">成绩复核</option>
             <option value="wrong-books">错题本</option>
             <option value="audit-logs">审计</option>
           </select>

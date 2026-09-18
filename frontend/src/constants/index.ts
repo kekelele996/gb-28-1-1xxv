@@ -66,6 +66,15 @@ export const ANSWER_RESULT = {
 
 export type AnswerResult = (typeof ANSWER_RESULT)[keyof typeof ANSWER_RESULT];
 
+// 成绩复核状态：与后端 constants.ReviewStatus* 对应
+export const REVIEW_STATUS = {
+  PENDING: 'pending',
+  ADJUSTED: 'adjusted',
+  REJECTED: 'rejected',
+} as const;
+
+export type ReviewStatus = (typeof REVIEW_STATUS)[keyof typeof REVIEW_STATUS];
+
 export const WRONG_BOOK_STATUS = {
   ACTIVE: 'active',
   RESOLVED: 'resolved',

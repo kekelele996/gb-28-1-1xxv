@@ -84,17 +84,33 @@ const (
 	WrongBookStatusResolved = "resolved" // 已掌握
 )
 
+// 成绩复核状态枚举（ScoreReviewStatus）。
+// 出现位置：model/score_review.go、dto/score_review.go、service/score_review_service.go、
+// handler/score_review_handler.go、constants/error_codes.go、constants/log_templates.go、
+// util/formatters.go、前端 src/constants/index.ts、src/utils/format.ts、src/components/StatusBadge.tsx、
+// src/app/reviews/page.tsx、src/app/records/review/page.tsx。
+const (
+	ReviewStatusPending  = "pending"  // 待复核（成绩锁定，教师不能重复批改）
+	ReviewStatusAdjusted = "adjusted" // 复核完成，分数已调整
+	ReviewStatusRejected = "rejected" // 复核完成，维持原判
+)
+
+// 成绩复核可申请窗口：成绩发布（首次批改完成）后 24 小时。
+const ScoreReviewWindowHours = 24
+
 // 审计操作动作枚举（AuditAction）。
 const (
-	AuditActionCreate  = "create"
-	AuditActionUpdate  = "update"
-	AuditActionDelete  = "delete"
-	AuditActionLogin   = "login"
-	AuditActionSubmit  = "submit"
-	AuditActionGrade   = "grade"
-	AuditActionImport  = "import"
-	AuditActionPublish = "publish"
-	AuditActionExport  = "export"
+	AuditActionCreate       = "create"
+	AuditActionUpdate       = "update"
+	AuditActionDelete       = "delete"
+	AuditActionLogin        = "login"
+	AuditActionSubmit       = "submit"
+	AuditActionGrade        = "grade"
+	AuditActionImport       = "import"
+	AuditActionPublish      = "publish"
+	AuditActionExport       = "export"
+	AuditActionReviewApply  = "review_apply"  // 学生发起成绩复核
+	AuditActionReviewDecide = "review_decide" // 教师复核裁定
 )
 
 // 判卷方式枚举（GradingMode）。
@@ -167,6 +183,16 @@ func IsValidAnswerResult(r string) bool {
 // IsObjectiveQuestion 判断是否客观题（自动阅卷）。
 func IsObjectiveQuestion(qt string) bool {
 	return qt == QuestionTypeSingle || qt == QuestionTypeMultiple || qt == QuestionTypeJudge
+}
+
+// IsSubjectiveQuestion 判断是否主观题（教师批改 / 复核只能改主观题）。
+func IsSubjectiveQuestion(qt string) bool {
+	return qt == QuestionTypeFill || qt == QuestionTypeShort
+}
+
+// IsValidReviewStatus 校验成绩复核状态是否合法。
+func IsValidReviewStatus(s string) bool {
+	return s == ReviewStatusPending || s == ReviewStatusAdjusted || s == ReviewStatusRejected
 }
 
 // CanTransition 判断状态迁移是否合法（状态机）。

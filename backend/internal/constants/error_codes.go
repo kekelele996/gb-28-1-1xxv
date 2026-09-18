@@ -39,6 +39,8 @@ const (
 	CodeRecordStatusErr   = 5002 // 考试记录状态非法/不可提交
 	CodeRecordExpired     = 5003 // 考试记录已超时
 	CodeRecordAlreadyDone = 5004 // 考试记录已提交
+	CodeRecordLocked      = 5005 // 成绩复核中，成绩已锁定（教师不能重复批改）
+	CodeRecordVersion     = 5006 // 记录已被他人修改（重复提交/并发冲突）
 
 	// 错题本模块
 	CodeWrongBookNotFound = 6001 // 错题本条目不存在
@@ -46,6 +48,15 @@ const (
 
 	// 审计模块
 	CodeAuditNotFound = 7001 // 审计日志不存在
+
+	// 成绩复核模块（8001-8999）
+	CodeReviewNotFound      = 8001 // 复核记录不存在
+	CodeReviewDuplicate     = 8002 // 已发起过复核，不能重复提交
+	CodeReviewNotGraded     = 8003 // 成绩尚未发布（未批改完成），不能复核
+	CodeReviewWindowExpired = 8004 // 已超过成绩发布后 24 小时复核窗口
+	CodeReviewNotPending    = 8005 // 复核不在待复核状态（已裁定，不能重复复核）
+	CodeReviewObjectiveOnly = 8006 // 复核只能修改主观题分值
+	CodeReviewDecisionErr   = 8007 // 复核裁定/复核意见非法
 )
 
 // ErrorCodeText 返回错误码对应的默认文案（供 messages 与 handler 包装使用）。
@@ -103,12 +114,30 @@ func ErrorCodeText(code int) string {
 		return "考试记录已超时"
 	case CodeRecordAlreadyDone:
 		return "考试记录已提交"
+	case CodeRecordLocked:
+		return "成绩复核中，成绩已锁定"
+	case CodeRecordVersion:
+		return "记录已被他人修改，请刷新后重试"
 	case CodeWrongBookNotFound:
 		return "错题本条目不存在"
 	case CodeWrongBookExists:
 		return "错题已存在于错题本"
 	case CodeAuditNotFound:
 		return "审计日志不存在"
+	case CodeReviewNotFound:
+		return "复核记录不存在"
+	case CodeReviewDuplicate:
+		return "已发起过成绩复核，不能重复提交"
+	case CodeReviewNotGraded:
+		return "成绩尚未发布，暂不能复核"
+	case CodeReviewWindowExpired:
+		return "已超过成绩发布后 24 小时复核窗口"
+	case CodeReviewNotPending:
+		return "复核已裁定，不能重复复核"
+	case CodeReviewObjectiveOnly:
+		return "复核只能修改主观题分值"
+	case CodeReviewDecisionErr:
+		return "复核裁定或复核意见非法"
 	default:
 		return "未知错误"
 	}

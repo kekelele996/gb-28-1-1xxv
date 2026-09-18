@@ -92,6 +92,7 @@ func (s *ExamRecordService) StartExam(ctx context.Context, examID, studentID pri
 		StudentName: studentName,
 		Questions:   questions,
 		Status:      constants.RecordStatusInProgress,
+		PassScore:   exam.PassScore, // 快照原及格线，复核改分后仍按该线判定
 		StartedAt:   now,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -184,8 +185,9 @@ func (s *ExamRecordService) Submit(ctx context.Context, recordID primitive.Objec
 	rec.Status = constants.RecordStatusSubmitted
 	rec.AutoSubmitted = auto
 	rec.UpdatedAt = now
-	if err := s.repo.Update(ctx, rec); err != nil {
-		return nil, fmt.Errorf("exam record service submit: %w", err)
+	rec.Version++ // 乐观锁：防止重复提交/并发写
+	if err := s.repo.SaveIfVersion(ctx, rec, rec.Version-1); err != nil {
+		return nil, s.mapRecordWriteErr(ctx, recordID, err, "exam record service submit")
 	}
 	if auto {
 		s.logger.Info(constants.LogRecordAutoSubmit, "record_id", rec.ID.Hex(), "exam_id", rec.ExamID.Hex(), "student", rec.StudentName)
@@ -207,6 +209,10 @@ func (s *ExamRecordService) Grade(ctx context.Context, recordID primitive.Object
 	if rec.Status != constants.RecordStatusSubmitted && rec.Status != constants.RecordStatusGraded {
 		return nil, util.NewAppError(constants.CodeRecordStatusErr, fmt.Sprintf(constants.MsgRecordStatusInvalid, rec.Status))
 	}
+	// 待复核期间成绩锁定，教师不能重复批改。
+	if rec.Review != nil && rec.Review.Status == constants.ReviewStatusPending {
+		return nil, util.NewAppError(constants.CodeRecordLocked, fmt.Sprintf(constants.MsgRecordLocked, recordID.Hex()))
+	}
 	gradeMap := make(map[string]dto.GradeItem, len(grades))
 	for _, g := range grades {
 		gradeMap[g.QuestionID] = g
@@ -226,15 +232,34 @@ func (s *ExamRecordService) Grade(ctx context.Context, recordID primitive.Object
 			subjectiveTotal += g.Score
 		}
 	}
+	now := time.Now()
+	firstGraded := rec.GradedAt == nil
 	rec.SubjectiveScore = subjectiveTotal
 	rec.FinalScore = rec.ObjectiveScore + subjectiveTotal
 	rec.Status = constants.RecordStatusGraded
-	rec.UpdatedAt = time.Now()
-	if err := s.repo.Update(ctx, rec); err != nil {
-		return nil, fmt.Errorf("exam record service grade: %w", err)
+	rec.Passed = rec.PassScore > 0 && rec.FinalScore >= rec.PassScore // 按原及格线更新结果
+	if firstGraded {
+		// 成绩发布时间（首次批改完成），24h 复核窗口自该时间起算。
+		rec.GradedAt = &now
+	}
+	rec.UpdatedAt = now
+	rec.Version++ // 乐观锁：防止与学生申请/教师并发复核相互覆盖
+	if err := s.repo.SaveIfVersion(ctx, rec, rec.Version-1); err != nil {
+		return nil, s.mapRecordWriteErr(ctx, recordID, err, "exam record service grade")
 	}
 	s.logger.Info(constants.LogRecordGraded, "record_id", rec.ID.Hex(), "result", rec.Status, "final_score", rec.FinalScore, "teacher", teacher)
 	return rec, nil
+}
+
+// mapRecordWriteErr 将乐观锁写入错误转换为业务错误（并发冲突时记录与成绩保持原样）。
+func (s *ExamRecordService) mapRecordWriteErr(ctx context.Context, recordID primitive.ObjectID, err error, wrapMsg string) error {
+	if errors.Is(err, repository.ErrConflict) {
+		return util.NewAppError(constants.CodeRecordVersion, fmt.Sprintf(constants.MsgRecordVersion, recordID.Hex()))
+	}
+	if errors.Is(err, repository.ErrNotFound) {
+		return util.NewAppError(constants.CodeRecordNotFound, fmt.Sprintf(constants.MsgRecordNotFound, recordID.Hex()))
+	}
+	return fmt.Errorf("%s: %w", wrapMsg, err)
 }
 
 // ListByStudent 学生查询自己的考试记录。

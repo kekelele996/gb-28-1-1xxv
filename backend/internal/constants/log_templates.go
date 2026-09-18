@@ -42,6 +42,11 @@ const (
 	LogRecordGraded     = "教师批改主观题完成 record_id=%s result=%s final_score=%d teacher=%s"
 	LogRecordCheat      = "检测到切屏行为 record_id=%s cheat_count=%d student=%s"
 
+	// 成绩复核模块（复核状态 pending/adjusted/rejected）
+	LogReviewApplied = "学生发起成绩复核 record_id=%s exam_id=%s student=%s final_score=%g"
+	LogReviewDecided = "教师完成成绩复核 record_id=%s decision=%s score_before=%g score_after=%g passed_before=%v passed_after=%v teacher=%s"
+	LogReviewRejected = "成绩复核操作被拒绝 record_id=%s reason_code=%d operator=%s"
+
 	// 错题本模块
 	LogWrongBookAdded    = "错题加入错题本 student=%s question_id=%s"
 	LogWrongBookResolved = "错题标记为已掌握 student=%s question_id=%s"

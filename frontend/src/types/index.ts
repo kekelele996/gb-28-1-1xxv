@@ -86,6 +86,48 @@ export interface AttemptQuestion {
   marked?: boolean;
 }
 
+export interface ReviewChange {
+  question_id: string;
+  content: string;
+  question_type: string;
+  score_before: number;
+  score_after: number;
+  comment_before: string;
+  comment_after: string;
+}
+
+export interface ReviewAudit {
+  action: string;
+  operator_id: string;
+  operator_name: string;
+  role: string;
+  comment: string;
+  created_at: string;
+}
+
+export interface ScoreReview {
+  record_id: string;
+  exam_id: string;
+  student_id: string;
+  exam_title: string;
+  student_name: string;
+  reason: string;
+  status: string; // pending / adjusted / rejected
+  final_score_before: number;
+  final_score_after: number;
+  passed_before: boolean | null;
+  passed_after: boolean | null;
+  pass_score: number;
+  changes: ReviewChange[];
+  teacher_id: string;
+  teacher_name: string;
+  teacher_comment: string;
+  applied_at: string | null;
+  decided_at: string | null;
+  expires_at: string;
+  audit_trail: ReviewAudit[];
+}
+
 export interface ExamRecord {
   id: string;
   exam_id: string;
@@ -99,8 +141,12 @@ export interface ExamRecord {
   subjective_score: number;
   final_score: number;
   pass_score: number;
+  passed: boolean;
   cheat_count: number;
   auto_submitted: boolean;
+  graded_at?: string | null;
+  review?: ScoreReview | null;
+  version: number;
   questions: AttemptQuestion[];
   created_at: string;
 }

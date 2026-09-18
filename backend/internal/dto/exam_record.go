@@ -88,9 +88,13 @@ type RecordResponse struct {
 	SubjectiveScore float64                   `json:"subjective_score"`
 	FinalScore      float64                   `json:"final_score"`
 	PassScore       float64                   `json:"pass_score"`
+	Passed          bool                      `json:"passed"`
 	CheatCount      int                       `json:"cheat_count"`
 	AutoSubmitted   bool                      `json:"auto_submitted"`
+	GradedAt        *time.Time                `json:"graded_at"`
+	Review          *ScoreReviewResponse      `json:"review"`
 	Questions       []model.AttemptQuestion   `json:"questions"`
+	Version         int64                     `json:"version"`
 	CreatedAt       time.Time                 `json:"created_at"`
 }
 
@@ -108,9 +112,14 @@ func ToRecordResponse(r *model.ExamRecord) RecordResponse {
 		ObjectiveScore:  r.ObjectiveScore,
 		SubjectiveScore: r.SubjectiveScore,
 		FinalScore:      r.FinalScore,
+		PassScore:       r.PassScore,
+		Passed:          r.Passed,
 		CheatCount:      r.CheatCount,
 		AutoSubmitted:   r.AutoSubmitted,
+		GradedAt:        r.GradedAt,
+		Review:          ToScoreReviewResponse(r.Review),
 		Questions:       r.Questions,
+		Version:         r.Version,
 		CreatedAt:       r.CreatedAt,
 	}
 }

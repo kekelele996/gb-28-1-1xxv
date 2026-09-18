@@ -114,6 +114,11 @@ func (h *ExamRecordHandler) Get(c *gin.Context) {
 		Error(c, err)
 		return
 	}
+	// 学生只能查看本人答卷（含本人复核记录）；教师/管理员不限。
+	if middleware.GetRole(c) == constants.RoleStudent && rec.StudentID != middleware.GetUserID(c) {
+		Error(c, util.NewAppError(constants.CodeForbidden, constants.MsgForbidden))
+		return
+	}
 	Success(c, dto.ToRecordResponse(rec))
 }
 

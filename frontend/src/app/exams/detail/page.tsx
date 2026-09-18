@@ -9,7 +9,7 @@ import { questionApi } from '@/api/question';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
-import { examStatusColor, examStatusText, formatDateTime, questionTypeText } from '@/utils/format';
+import { examStatusColor, examStatusText, formatDateTime, questionTypeText, recordStatusColor, recordStatusText, reviewStatusColor, reviewStatusText } from '@/utils/format';
 import { EXAM_STATUS } from '@/constants';
 import type { Exam, ExamRecord, Question } from '@/types';
 
@@ -71,7 +71,12 @@ function ExamDetail() {
 
   const recordColumns: Column<ExamRecord>[] = [
     { key: 'student_name', title: '学生', render: (r) => <span>{r.student_name}</span> },
-    { key: 'status', title: '状态', render: (r) => <StatusBadge text={r.status === 'graded' ? '已批改' : r.status === 'submitted' ? '已提交' : '答题中'} color={r.status === 'graded' ? 'green' : r.status === 'submitted' ? 'blue' : 'orange'} /> },
+    { key: 'status', title: '状态', render: (r) => (
+        <div className="flex items-center gap-1">
+          <StatusBadge text={recordStatusText(r.status)} color={recordStatusColor(r.status)} />
+          {r.review && <StatusBadge text={reviewStatusText(r.review.status)} color={reviewStatusColor(r.review.status)} />}
+        </div>
+      ) },
     { key: 'objective_score', title: '客观题分', render: (r) => <span>{r.objective_score}</span> },
     { key: 'final_score', title: '最终分', render: (r) => <span className="font-medium">{r.final_score || '-'}</span> },
     { key: 'cheat_count', title: '切屏次数', render: (r) => <span className={r.cheat_count > 0 ? 'text-red-600' : ''}>{r.cheat_count}</span> },

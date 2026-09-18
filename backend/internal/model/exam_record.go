@@ -52,9 +52,14 @@ type ExamRecord struct {
 	ObjectiveScore float64           `bson:"objective_score" json:"objective_score"` // 客观题自动得分
 	SubjectiveScore float64          `bson:"subjective_score" json:"subjective_score"`
 	FinalScore    float64            `bson:"final_score" json:"final_score"` // 最终总分
+	PassScore     float64            `bson:"pass_score" json:"pass_score"`   // 及格线快照（开始考试时取自试卷）
+	Passed        bool               `bson:"passed" json:"passed"`           // 是否及格（按原及格线判定）
 	CheatCount    int                `bson:"cheat_count" json:"cheat_count"`
 	CheatEvents   []CheatEvent       `bson:"cheat_events,omitempty" json:"cheat_events"`
 	AutoSubmitted bool               `bson:"auto_submitted" json:"auto_submitted"`
+	GradedAt      *time.Time         `bson:"graded_at,omitempty" json:"graded_at"` // 成绩首次发布（首次批改完成）时间，24h 复核窗口自该时间起算
+	Review        *ScoreReview       `bson:"review,omitempty" json:"review"`       // 成绩复核记录（与成绩同文档原子落盘）
+	Version       int64              `bson:"version" json:"version"`               // 乐观锁版本号，防止重复提交/并发复核
 	CreatedAt     time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt     time.Time          `bson:"updated_at" json:"updated_at"`
 }

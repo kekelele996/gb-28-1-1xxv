@@ -5,6 +5,7 @@ import {
   EXAM_STATUS,
   QUESTION_TYPES,
   RECORD_STATUS,
+  REVIEW_STATUS,
   ROLES,
   USER_STATUS,
 } from '@/constants';
@@ -76,6 +77,26 @@ export function answerResultText(r: string): string {
   }
 }
 
+export function reviewStatusText(s: string): string {
+  switch (s) {
+    case REVIEW_STATUS.PENDING: return '待复核';
+    case REVIEW_STATUS.ADJUSTED: return '已调整';
+    case REVIEW_STATUS.REJECTED: return '维持原判';
+    default: return s;
+  }
+}
+
+// 复核窗口剩余时间（基于 graded_at 发布时间 +24h），过期返回空串。
+export function reviewDeadline(gradedAt?: string | null): string {
+  if (!gradedAt) return '';
+  const d = new Date(gradedAt).getTime() + 24 * 60 * 60 * 1000;
+  const diff = d - Date.now();
+  if (diff <= 0) return '复核窗口已关闭';
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  return `剩余 ${h} 小时 ${m} 分钟`;
+}
+
 export function userStatusText(s: string): string {
   return s === USER_STATUS.ACTIVE ? '正常' : '已禁用';
 }
@@ -96,6 +117,15 @@ export function recordStatusColor(s: string): string {
     case RECORD_STATUS.IN_PROGRESS: return 'orange';
     case RECORD_STATUS.SUBMITTED: return 'blue';
     case RECORD_STATUS.GRADED: return 'green';
+    default: return 'gray';
+  }
+}
+
+export function reviewStatusColor(s: string): string {
+  switch (s) {
+    case REVIEW_STATUS.PENDING: return 'orange';
+    case REVIEW_STATUS.ADJUSTED: return 'green';
+    case REVIEW_STATUS.REJECTED: return 'gray';
     default: return 'gray';
   }
 }

@@ -5,7 +5,7 @@ import { useRecordStore } from '@/stores/recordStore';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
-import { formatDateTime, recordStatusColor, recordStatusText } from '@/utils/format';
+import { formatDateTime, recordStatusColor, recordStatusText, reviewStatusColor, reviewStatusText } from '@/utils/format';
 import type { ExamRecord } from '@/types';
 
 export default function RecordsPage() {
@@ -23,11 +23,34 @@ export default function RecordsPage() {
   const columns: Column<ExamRecord>[] = [
     { key: 'exam_title', title: '考试', render: (r) => <span className="font-medium">{r.exam_title}</span> },
     { key: 'status', title: '状态', render: (r) => <StatusBadge text={recordStatusText(r.status)} color={recordStatusColor(r.status)} /> },
-    { key: 'objective_score', title: '客观题分', render: (r) => <span>{r.objective_score}</span> },
-    { key: 'final_score', title: '最终分', render: (r) => <span className="font-semibold">{r.final_score || '-'}</span> },
+    {
+      key: 'final_score',
+      title: '最终分',
+      render: (r) => (
+        <span className="flex flex-col">
+          <span className="font-semibold">{r.final_score || '-'}</span>
+          {r.status === 'graded' && (
+            <span className={`text-xs ${r.passed ? 'text-green-600' : 'text-red-600'}`}>{r.passed ? '及格' : '不及格'}</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'review',
+      title: '成绩复核',
+      render: (r) =>
+        r.review ? (
+          <StatusBadge text={reviewStatusText(r.review.status)} color={reviewStatusColor(r.review.status)} />
+        ) : (
+          <span className="text-xs text-gray-400">-</span>
+        ),
+    },
     { key: 'cheat_count', title: '切屏次数', render: (r) => <span className={r.cheat_count > 0 ? 'text-red-600' : ''}>{r.cheat_count}</span> },
     { key: 'started_at', title: '开始时间', render: (r) => <span className="text-xs">{formatDateTime(r.started_at)}</span> },
-    { key: 'actions', title: '操作', render: (r) => (
+    {
+      key: 'actions',
+      title: '操作',
+      render: (r) => (
         <div className="flex gap-2">
           {r.status === 'in_progress' ? (
             <Link href={`/exam-take?recordId=${r.id}`} className="text-brand-600 hover:underline">继续作答</Link>
@@ -35,7 +58,8 @@ export default function RecordsPage() {
             <Link href={`/records/review?recordId=${r.id}`} className="text-brand-600 hover:underline">查看答卷</Link>
           )}
         </div>
-      ) },
+      ),
+    },
   ];
 
   return (

@@ -48,3 +48,23 @@ func (s *AuditService) List(ctx context.Context, filter bson.M, page, pageSize i
 	}
 	return list, total, nil
 }
+
+// WriteReviewAudit 实现 service.ReviewAuditSink：成绩复核关键动作写入系统审计集合。
+// best-effort：成绩与内嵌审计已随单文档原子落盘，此处失败仅告警，不影响复核结果。
+func (s *AuditService) WriteReviewAudit(ctx context.Context, e ReviewAuditEvent) {
+	entry := &model.AuditLog{
+		ID:        primitive.NewObjectID(),
+		UserID:    e.OperatorID,
+		Username:  e.OperatorName,
+		Role:      e.Role,
+		Module:    "score-review",
+		Action:    e.Action,
+		Method:    "POST",
+		Path:      "/api/v1/exam-records/" + e.RecordID + "/review",
+		Detail:    e.Detail,
+		CreatedAt: time.Now(),
+	}
+	if err := s.repo.Create(ctx, entry); err != nil {
+		s.logger.Warn("成绩复核系统审计写入失败", "record_id", e.RecordID, "action", e.Action, "error", err.Error())
+	}
+}

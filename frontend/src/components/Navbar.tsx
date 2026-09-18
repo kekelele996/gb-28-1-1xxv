@@ -17,6 +17,7 @@ export function Navbar() {
     { href: '/questions', label: '题库', show: true },
     { href: '/exams', label: '考试', show: true },
     { href: '/records', label: '我的考试', show: isStudent },
+    { href: '/reviews', label: '成绩复核', show: true },
     { href: '/wrongbook', label: '错题本', show: isStudent },
     { href: '/users', label: '用户管理', show: isAdmin },
     { href: '/audit', label: '审计日志', show: isAdmin },

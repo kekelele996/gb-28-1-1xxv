@@ -33,6 +33,7 @@ docker compose up -d --build
 5. **防作弊机制**：切屏/失焦/复制粘贴检测并记录次数与事件；支持随机打乱题目顺序与选项顺序；禁止复制粘贴。
 6. **成绩分析**：平均分、最高分、最低分、及格率、分数段直方图、每题正确率。
 7. **错题回顾**：查看答卷与正确答案对照，错题一键加入错题本，按知识点归类复习。
+8. **成绩复核闭环**：学生只能在成绩发布后 24 小时内对本人已批改记录发起一次复核（理由必填）；待复核期间成绩锁定，教师不能重复批改；教师复核只能改主观题，任一分值变化都重算总分并按原及格线更新及格结果，复核意见、修改前后分数与审计记录随成绩单文档原子落盘；重复提交、并发复核或写入失败时记录/成绩/审计保持原样（乐观锁条件写）；页面按角色展示申请、复核与回读状态。
 
 ## 技术栈
 
@@ -166,6 +167,11 @@ npm run dev                  # http://localhost:3000，/api 已代理到 localho
 | POST | /exam-records/:id/grade | 教师/管理员 | 主观题批改 |
 | POST | /exam-records/:id/auto-submit | 教师/管理员 | 超时自动提交 |
 | GET | /exams/:examId/report | 教师/管理员 | 成绩分析报告 |
+| POST | /exam-records/:id/review | 学生 | 成绩发布后 24h 内对本人已批改记录发起一次复核（理由必填） |
+| GET | /exam-records/:id/review | 登录 | 按角色读取复核详情（学生限本人） |
+| POST | /exam-records/:id/review/decide | 教师/管理员 | 复核裁定（只能改主观题；重算总分、按原及格线更新结果，复核意见/改分/审计一次落盘） |
+| GET | /score-reviews | 教师/管理员 | 复核列表（可按 status=pending/adjusted/rejected 过滤） |
+| GET | /score-reviews/mine | 学生 | 我的成绩复核（回读申请、复核状态与结果） |
 | GET | /wrong-books | 学生 | 错题本分页 |
 | POST | /wrong-books | 学生 | 加入错题本 |
 | GET | /wrong-books/:id | 学生 | 错题详情 |

@@ -17,6 +17,9 @@ import (
 type ExamRecordRepository interface {
 	Create(ctx context.Context, r *model.ExamRecord) error
 	Update(ctx context.Context, r *model.ExamRecord) error
+	// SaveIfVersion 乐观锁条件替换：仅当库中 version 等于 expectedVersion（或文档尚无 version 字段且期望值为 0）时写入。
+	// 命中并写入返回 nil；版本不匹配返回 ErrConflict（重复提交/并发复核，记录与成绩保持原样）。
+	SaveIfVersion(ctx context.Context, r *model.ExamRecord, expectedVersion int64) error
 	FindByID(ctx context.Context, id primitive.ObjectID) (*model.ExamRecord, error)
 	FindActiveByExamAndStudent(ctx context.Context, examID, studentID primitive.ObjectID) (*model.ExamRecord, error)
 	List(ctx context.Context, filter bson.M, page, pageSize int64) ([]*model.ExamRecord, int64, error)
@@ -49,6 +52,28 @@ func (r *MongoExamRecordRepository) Update(ctx context.Context, rec *model.ExamR
 	}
 	if res.MatchedCount == 0 {
 		return fmt.Errorf("update exam record: %w", ErrNotFound)
+	}
+	return nil
+}
+
+func (r *MongoExamRecordRepository) SaveIfVersion(ctx context.Context, rec *model.ExamRecord, expectedVersion int64) error {
+	// version 字段为后期新增，兼容历史无 version 字段的文档（期望值为 0 时视作版本 0）。
+	clauses := bson.A{bson.M{"version": expectedVersion}}
+	if expectedVersion == 0 {
+		clauses = append(clauses, bson.M{"version": bson.M{"$exists": false}})
+	}
+	filter := bson.M{"_id": rec.ID, "$or": clauses}
+	res, err := r.coll.ReplaceOne(ctx, filter, rec)
+	if err != nil {
+		return fmt.Errorf("save exam record with version: %w", err)
+	}
+	if res.MatchedCount == 0 {
+		// 区分不存在与版本冲突由 service 层结合预读结果判断；这里优先返回冲突。
+		var count int64
+		if count, _ = r.coll.CountDocuments(ctx, bson.M{"_id": rec.ID}); count == 0 {
+			return fmt.Errorf("save exam record with version: %w", ErrNotFound)
+		}
+		return fmt.Errorf("save exam record with version: %w", ErrConflict)
 	}
 	return nil
 }
