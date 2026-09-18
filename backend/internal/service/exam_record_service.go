@@ -196,6 +196,8 @@ func (s *ExamRecordService) Submit(ctx context.Context, recordID primitive.Objec
 }
 
 // Grade 教师批改主观题（填空题/简答题）。
+// 成绩锁定规则：记录存在 review.status=pending 的待复核申请时拒绝批改；
+// 整个写入通过带前置条件的单文档原子替换完成，与并发复核互不覆盖。
 func (s *ExamRecordService) Grade(ctx context.Context, recordID primitive.ObjectID, grades []dto.GradeItem, teacher string) (*model.ExamRecord, error) {
 	rec, err := s.repo.FindByID(ctx, recordID)
 	if err != nil {
@@ -206,6 +208,11 @@ func (s *ExamRecordService) Grade(ctx context.Context, recordID primitive.Object
 	}
 	if rec.Status != constants.RecordStatusSubmitted && rec.Status != constants.RecordStatusGraded {
 		return nil, util.NewAppError(constants.CodeRecordStatusErr, fmt.Sprintf(constants.MsgRecordStatusInvalid, rec.Status))
+	}
+	// 待复核期间成绩锁定，教师不能重复批改。
+	if rec.Review != nil && rec.Review.Status == constants.ReviewStatusPending {
+		s.logger.Warn(constants.LogReviewLocked, "record_id", recordID.Hex(), "teacher", teacher)
+		return nil, util.NewAppError(constants.CodeReviewLocked, fmt.Sprintf(constants.MsgReviewLocked, recordID.Hex()))
 	}
 	gradeMap := make(map[string]dto.GradeItem, len(grades))
 	for _, g := range grades {
@@ -229,9 +236,30 @@ func (s *ExamRecordService) Grade(ctx context.Context, recordID primitive.Object
 	rec.SubjectiveScore = subjectiveTotal
 	rec.FinalScore = rec.ObjectiveScore + subjectiveTotal
 	rec.Status = constants.RecordStatusGraded
-	rec.UpdatedAt = time.Now()
-	if err := s.repo.Update(ctx, rec); err != nil {
+	now := time.Now()
+	firstPublish := rec.GradedAt == nil
+	if firstPublish {
+		// 首次批改完成视为成绩发布：记录发布时间（复核 24h 窗口起点）与及格线快照。
+		rec.GradedAt = &now
+		if exam, examErr := s.exam.GetByID(ctx, rec.ExamID); examErr == nil {
+			rec.PassScore = exam.PassScore
+		}
+	}
+	rec.Passed = rec.PassScore > 0 && rec.FinalScore >= rec.PassScore
+	rec.UpdatedAt = now
+	// 原子条件替换：状态必须仍为 submitted/graded 且不存在 pending 复核，
+	// 否则说明并发了提交/复核，放弃本次写入，文档保持原样。
+	guard := bson.M{
+		"status":        bson.M{"$in": []string{constants.RecordStatusSubmitted, constants.RecordStatusGraded}},
+		"review.status": bson.M{"$ne": constants.ReviewStatusPending},
+	}
+	matched, err := s.repo.ReplaceIf(ctx, rec, guard)
+	if err != nil {
 		return nil, fmt.Errorf("exam record service grade: %w", err)
+	}
+	if !matched {
+		s.logger.Warn(constants.LogReviewLocked, "record_id", recordID.Hex(), "teacher", teacher)
+		return nil, util.NewAppError(constants.CodeReviewConflict, fmt.Sprintf(constants.MsgReviewConflict, recordID.Hex()))
 	}
 	s.logger.Info(constants.LogRecordGraded, "record_id", rec.ID.Hex(), "result", rec.Status, "final_score", rec.FinalScore, "teacher", teacher)
 	return rec, nil
@@ -280,9 +308,9 @@ func (s *ExamRecordService) Report(ctx context.Context, examID primitive.ObjectI
 		return nil, fmt.Errorf("exam record service report: %w", err)
 	}
 	report := &dto.ExamReport{
-		ExamID:       examID.Hex(),
-		ExamTitle:    exam.Title,
-		ScoreBands:   map[string]int{"0-59": 0, "60-69": 0, "70-79": 0, "80-89": 0, "90-100": 0},
+		ExamID:          examID.Hex(),
+		ExamTitle:       exam.Title,
+		ScoreBands:      map[string]int{"0-59": 0, "60-69": 0, "70-79": 0, "80-89": 0, "90-100": 0},
 		QuestionReports: make([]dto.ExamReportItem, 0, len(exam.Questions)),
 	}
 	if len(recs) == 0 {

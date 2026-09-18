@@ -5,7 +5,7 @@ import { useRecordStore } from '@/stores/recordStore';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Pagination } from '@/components/Pagination';
 import { StatusBadge } from '@/components/StatusBadge';
-import { formatDateTime, recordStatusColor, recordStatusText } from '@/utils/format';
+import { formatDateTime, recordStatusColor, recordStatusText, reviewStatusColor, reviewStatusText } from '@/utils/format';
 import type { ExamRecord } from '@/types';
 
 export default function RecordsPage() {
@@ -22,9 +22,31 @@ export default function RecordsPage() {
 
   const columns: Column<ExamRecord>[] = [
     { key: 'exam_title', title: '考试', render: (r) => <span className="font-medium">{r.exam_title}</span> },
-    { key: 'status', title: '状态', render: (r) => <StatusBadge text={recordStatusText(r.status)} color={recordStatusColor(r.status)} /> },
+    {
+      key: 'status',
+      title: '状态',
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusBadge text={recordStatusText(r.status)} color={recordStatusColor(r.status)} />
+          {r.review && (
+            <StatusBadge text={reviewStatusText(r.review.status)} color={reviewStatusColor(r.review.status)} />
+          )}
+        </div>
+      ),
+    },
     { key: 'objective_score', title: '客观题分', render: (r) => <span>{r.objective_score}</span> },
-    { key: 'final_score', title: '最终分', render: (r) => <span className="font-semibold">{r.final_score || '-'}</span> },
+    {
+      key: 'final_score',
+      title: '最终分',
+      render: (r) =>
+        r.status === 'graded' && r.pass_score > 0 ? (
+          <span className={r.passed ? 'font-semibold text-green-600' : 'font-semibold text-red-600'}>
+            {r.final_score} {r.passed ? '及格' : '不及格'}
+          </span>
+        ) : (
+          <span className="font-semibold">{r.final_score || '-'}</span>
+        ),
+    },
     { key: 'cheat_count', title: '切屏次数', render: (r) => <span className={r.cheat_count > 0 ? 'text-red-600' : ''}>{r.cheat_count}</span> },
     { key: 'started_at', title: '开始时间', render: (r) => <span className="text-xs">{formatDateTime(r.started_at)}</span> },
     { key: 'actions', title: '操作', render: (r) => (

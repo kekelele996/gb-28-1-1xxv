@@ -11,12 +11,14 @@ export function Navbar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { isAuthenticated, isTeacher, isStudent, isAdmin } = useAuth();
+  const canManage = isTeacher || isAdmin;
 
   const links: { href: string; label: string; show: boolean }[] = [
     { href: '/', label: '首页', show: true },
     { href: '/questions', label: '题库', show: true },
     { href: '/exams', label: '考试', show: true },
     { href: '/records', label: '我的考试', show: isStudent },
+    { href: '/reviews', label: '成绩复核', show: canManage },
     { href: '/wrongbook', label: '错题本', show: isStudent },
     { href: '/users', label: '用户管理', show: isAdmin },
     { href: '/audit', label: '审计日志', show: isAdmin },

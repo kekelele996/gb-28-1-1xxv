@@ -102,7 +102,7 @@ func (h *ExamRecordHandler) Grade(c *gin.Context) {
 	SuccessMessage(c, constants.MsgRecordGradedSuccess, dto.ToRecordResponse(rec))
 }
 
-// Get 查询单个考试记录。
+// Get 查询单个考试记录（学生仅可查本人，教师/管理员不限）。
 func (h *ExamRecordHandler) Get(c *gin.Context) {
 	id, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
@@ -112,6 +112,10 @@ func (h *ExamRecordHandler) Get(c *gin.Context) {
 	rec, err := h.svc.GetByID(c.Request.Context(), id)
 	if err != nil {
 		Error(c, err)
+		return
+	}
+	if middleware.GetRole(c) == constants.RoleStudent && rec.StudentID != middleware.GetUserID(c) {
+		Error(c, util.NewAppError(constants.CodeForbidden, "考试记录模块：学生仅可查看本人答卷"))
 		return
 	}
 	Success(c, dto.ToRecordResponse(rec))

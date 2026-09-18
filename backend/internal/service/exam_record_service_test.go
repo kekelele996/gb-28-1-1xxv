@@ -25,6 +25,20 @@ func newFakeRecordRepo() *fakeRecordRepo {
 	return &fakeRecordRepo{records: make(map[string]*model.ExamRecord)}
 }
 
+// cloneRecord 通过 BSON 序列化做深拷贝，使内存仓储的读语义与 Mongo 一致
+// （FindByID 返回的对象与集合内文档互不共享底层数组/指针）。
+func cloneRecord(r *model.ExamRecord) *model.ExamRecord {
+	raw, err := bson.Marshal(r)
+	if err != nil {
+		panic(err)
+	}
+	var cp model.ExamRecord
+	if err := bson.Unmarshal(raw, &cp); err != nil {
+		panic(err)
+	}
+	return &cp
+}
+
 func (f *fakeRecordRepo) Create(_ context.Context, r *model.ExamRecord) error {
 	f.records[r.ID.Hex()] = r
 	return nil
@@ -33,16 +47,97 @@ func (f *fakeRecordRepo) Update(_ context.Context, r *model.ExamRecord) error {
 	f.records[r.ID.Hex()] = r
 	return nil
 }
+
+// ReplaceIf 内存版原子条件替换：逐条校验 filter（支持等值、$ne、$in 与 nil 判定）。
+func (f *fakeRecordRepo) ReplaceIf(_ context.Context, r *model.ExamRecord, filter bson.M) (bool, error) {
+	cur, ok := f.records[r.ID.Hex()]
+	if !ok {
+		return false, repository.ErrNotFound
+	}
+	if !fakeRecordMatches(cur, filter) {
+		return false, nil
+	}
+	f.records[r.ID.Hex()] = r
+	return true, nil
+}
+
+// fakeRecordMatches 模拟 Mongo 查询条件（仅实现复核闭环用到的操作符）。
+func fakeRecordMatches(r *model.ExamRecord, filter bson.M) bool {
+	for key, cond := range filter {
+		switch key {
+		case "status":
+			if !fakeValueMatches(r.Status, cond) {
+				return false
+			}
+		case "review":
+			if cond == nil && r.Review != nil {
+				return false
+			}
+		case "review.status":
+			status := ""
+			if r.Review != nil {
+				status = r.Review.Status
+			}
+			if !fakeValueMatches(status, cond) {
+				return false
+			}
+		case "graded_at":
+			want := cond.(*time.Time)
+			if (r.GradedAt == nil) != (want == nil) {
+				return false
+			}
+			// Mongo 以 BSON datetime（毫秒精度）存储，比较时双向截断毫秒。
+			if r.GradedAt != nil && !r.GradedAt.Truncate(time.Millisecond).Equal(want.Truncate(time.Millisecond)) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// fakeValueMatches 支持等值、$ne、$in。
+func fakeValueMatches(actual interface{}, cond interface{}) bool {
+	switch v := cond.(type) {
+	case bson.M:
+		for op, val := range v {
+			switch op {
+			case "$ne":
+				if actual == val {
+					return false
+				}
+			case "$in":
+				found := false
+				for _, item := range val.([]string) {
+					if actual == item {
+						found = true
+					}
+				}
+				if !found {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	default:
+		return actual == cond
+	}
+}
 func (f *fakeRecordRepo) FindByID(_ context.Context, id primitive.ObjectID) (*model.ExamRecord, error) {
 	if r, ok := f.records[id.Hex()]; ok {
-		return r, nil
+		// 返回深拷贝，模拟 Mongo 读/写分离：service 对返回值的修改不影响库中文档，
+		// ReplaceIf 的前置条件匹配到的必须仍是写入前的旧文档。
+		return cloneRecord(r), nil
 	}
 	return nil, repository.ErrNotFound
 }
 func (f *fakeRecordRepo) FindActiveByExamAndStudent(_ context.Context, examID, studentID primitive.ObjectID) (*model.ExamRecord, error) {
 	for _, r := range f.records {
 		if r.ExamID == examID && r.StudentID == studentID && r.Status == constants.RecordStatusInProgress {
-			return r, nil
+			return cloneRecord(r), nil
 		}
 	}
 	return nil, repository.ErrNotFound
@@ -63,6 +158,15 @@ func (f *fakeRecordRepo) ListAll(_ context.Context, _ bson.M) ([]*model.ExamReco
 }
 func (f *fakeRecordRepo) CountByExamAndStatus(_ context.Context, _ primitive.ObjectID, _ []string) (int64, error) {
 	return int64(len(f.records)), nil
+}
+func (f *fakeRecordRepo) ListPendingReviews(_ context.Context, _, _ int64) ([]*model.ExamRecord, int64, error) {
+	var out []*model.ExamRecord
+	for _, r := range f.records {
+		if r.Review != nil && r.Review.Status == constants.ReviewStatusPending {
+			out = append(out, r)
+		}
+	}
+	return out, int64(len(out)), nil
 }
 
 func newTestRecordSvc() *ExamRecordService {

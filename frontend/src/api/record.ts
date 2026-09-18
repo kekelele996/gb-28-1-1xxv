@@ -37,4 +37,25 @@ export const recordApi = {
   autoSubmit(id: string) {
     return request<ExamRecord>(`/exam-records/${id}/auto-submit`, { method: 'POST' });
   },
+  // 学生发起成绩复核（理由必填；24h 内仅一次）。
+  requestReview(id: string, reason: string) {
+    return request<ExamRecord>(`/exam-records/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+  // 教师处理复核（意见必填；仅主观题给分；result 可选）。
+  completeReview(
+    id: string,
+    payload: { teacher_opinion: string; result?: string; grades?: { question_id: string; score: number; comment?: string }[] },
+  ) {
+    return request<ExamRecord>(`/exam-records/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  // 教师待复核列表。
+  pendingReviews(query: { page?: number; page_size?: number }) {
+    return request<PageResult<ExamRecord>>(`/reviews/pending${buildQuery({ ...query })}`);
+  },
 };

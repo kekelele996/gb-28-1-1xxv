@@ -3,6 +3,8 @@
 // service 状态机、handler 校验、日志模板、错误码、formatters 与前端 constants 中重复出现。
 package constants
 
+import "time"
+
 // 用户角色枚举（UserRole）。
 // 出现位置：model/user.go、dto/user.go、service/user_service.go、handler/user_handler.go、
 // middleware/rbac.go、constants/error_codes.go、constants/log_templates.go、util/formatters.go、
@@ -78,6 +80,20 @@ const (
 	AnswerResultUnmarked = "unmarked" // 未批改（主观题）
 )
 
+// 成绩复核状态枚举（GradeReviewStatus）。
+// 出现位置：model/grade_review.go、model/exam_record.go、dto/exam_record.go、
+// service/grade_review_service.go、handler/exam_record_handler.go、
+// constants/error_codes.go、constants/log_templates.go、constants/messages.go、
+// util/formatters.go、前端 src/constants/index.ts、src/utils/format.ts、src/pages/records/review。
+const (
+	ReviewStatusPending  = "pending"  // 待复核：成绩锁定，教师不能重复批改
+	ReviewStatusAdjusted = "adjusted" // 已复核且分值变化（总分/及格结果已重算）
+	ReviewStatusRejected = "rejected" // 已复核维持原分
+)
+
+// ReviewWindow 成绩复核时间窗：成绩发布（首次批改完成）后 24 小时内可发起，且仅一次。
+const ReviewWindow = 24 * time.Hour
+
 // 错题本状态枚举（WrongBookStatus）。
 const (
 	WrongBookStatusActive   = "active"   // 未掌握
@@ -95,6 +111,7 @@ const (
 	AuditActionImport  = "import"
 	AuditActionPublish = "publish"
 	AuditActionExport  = "export"
+	AuditActionReview  = "review" // 成绩复核（申请/处理）
 )
 
 // 判卷方式枚举（GradingMode）。
@@ -159,6 +176,15 @@ func IsValidRecordStatus(s string) bool {
 func IsValidAnswerResult(r string) bool {
 	switch r {
 	case AnswerResultCorrect, AnswerResultWrong, AnswerResultPartial, AnswerResultUnmarked:
+		return true
+	}
+	return false
+}
+
+// IsValidReviewStatus 校验成绩复核状态是否合法。
+func IsValidReviewStatus(s string) bool {
+	switch s {
+	case ReviewStatusPending, ReviewStatusAdjusted, ReviewStatusRejected:
 		return true
 	}
 	return false

@@ -33,6 +33,7 @@ docker compose up -d --build
 5. **防作弊机制**：切屏/失焦/复制粘贴检测并记录次数与事件；支持随机打乱题目顺序与选项顺序；禁止复制粘贴。
 6. **成绩分析**：平均分、最高分、最低分、及格率、分数段直方图、每题正确率。
 7. **错题回顾**：查看答卷与正确答案对照，错题一键加入错题本，按知识点归类复习。
+8. **成绩复核闭环**：学生在成绩发布后 24 小时内可对本人已批改记录发起一次复核（理由必填）；待复核期间成绩锁定、教师不能重复批改；教师复核仅可改主观题，任一分值变化都重算总分并按原及格线更新及格结果，复核意见、修改前后分数与审计记录随答卷单文档原子落盘；重复提交、并发复核或写入失败时记录/成绩/审计保持原样；页面按角色展示申请、复核与回读状态（pending / adjusted / rejected）。
 
 ## 技术栈
 
@@ -163,9 +164,12 @@ npm run dev                  # http://localhost:3000，/api 已代理到 localho
 | POST | /exam-records/:id/submit | 学生 | 提交答卷（客观题自动判分） |
 | GET | /exam-records/:id | 登录 | 答卷详情 |
 | GET | /exams/:examId/records | 教师/管理员 | 某考试全部答卷 |
-| POST | /exam-records/:id/grade | 教师/管理员 | 主观题批改 |
+| POST | /exam-records/:id/grade | 教师/管理员 | 主观题批改（待复核期间被锁定拒绝） |
 | POST | /exam-records/:id/auto-submit | 教师/管理员 | 超时自动提交 |
 | GET | /exams/:examId/report | 教师/管理员 | 成绩分析报告 |
+| POST | /exam-records/:id/review | 学生 | 发起成绩复核（成绩发布 24h 内、仅本人、仅一次、理由必填） |
+| POST | /exam-records/:id/review | 教师/管理员 | 处理复核（仅改主观题、复核意见必填、重算总分/及格、意见+前后分数+审计一次落盘） |
+| GET | /reviews/pending | 教师/管理员 | 待复核成绩分页（按申请时间升序） |
 | GET | /wrong-books | 学生 | 错题本分页 |
 | POST | /wrong-books | 学生 | 加入错题本 |
 | GET | /wrong-books/:id | 学生 | 错题详情 |
@@ -248,6 +252,10 @@ curl -sS http://localhost:3003/healthz
 ### 7. 错题本状态 WrongBookStatus（active / resolved）
 后端：`internal/constants/enums.go`、`internal/model/wrong_book.go`、`internal/dto/wrong_book.go`、`internal/service/wrong_book_service.go`、`internal/handler/wrong_book_handler.go`、`internal/constants/log_templates.go`、`internal/util/formatters.go`。
 前端：`src/constants/index.ts`、`src/app/wrongbook/page.tsx`。
+
+### 8. 成绩复核状态 GradeReviewStatus（pending / adjusted / rejected）+ 24h 窗口
+后端：`internal/constants/enums.go`（`ReviewWindow=24h`）、`internal/model/grade_review.go`、`internal/model/exam_record.go`（graded_at/pass_score/passed/review 内嵌）、`internal/dto/exam_record.go`、`internal/service/grade_review_service.go`、`internal/service/exam_record_service.go`（Grade 锁定）、`internal/repository/exam_record_repository.go`（ReplaceIf 条件原子替换/ListPendingReviews）、`internal/handler/grade_review_handler.go`、`internal/router/exam_record.go`、`internal/constants/error_codes.go`（5101-5106）、`internal/constants/log_templates.go`、`internal/constants/messages.go`、`internal/util/formatters.go`、`internal/migrations/indexes.go`。
+前端：`src/constants/index.ts`、`src/utils/format.ts`、`src/types/index.ts`、`src/api/record.ts`、`src/app/records/review/page.tsx`、`src/app/reviews/page.tsx`、`src/app/records/page.tsx`、`src/app/exams/detail/page.tsx`、`src/components/Navbar.tsx`。
 
 ## 屎山代码设计要求（跨文件协同改动能力验证）
 

@@ -5,6 +5,7 @@ import {
   EXAM_STATUS,
   QUESTION_TYPES,
   RECORD_STATUS,
+  REVIEW_STATUS,
   ROLES,
   USER_STATUS,
 } from '@/constants';
@@ -98,4 +99,28 @@ export function recordStatusColor(s: string): string {
     case RECORD_STATUS.GRADED: return 'green';
     default: return 'gray';
   }
+}
+
+export function reviewStatusText(s: string): string {
+  switch (s) {
+    case REVIEW_STATUS.PENDING: return '待复核';
+    case REVIEW_STATUS.ADJUSTED: return '复核已调整';
+    case REVIEW_STATUS.REJECTED: return '复核维持原分';
+    default: return '未复核';
+  }
+}
+
+export function reviewStatusColor(s: string): string {
+  switch (s) {
+    case REVIEW_STATUS.PENDING: return 'red';
+    case REVIEW_STATUS.ADJUSTED: return 'green';
+    case REVIEW_STATUS.REJECTED: return 'gray';
+    default: return 'gray';
+  }
+}
+
+// 是否仍在成绩发布后 24h 复核窗口内。
+export function withinReviewWindow(deadline?: string | null): boolean {
+  if (!deadline) return false;
+  return new Date(deadline).getTime() > Date.now();
 }

@@ -66,6 +66,18 @@ export const ANSWER_RESULT = {
 
 export type AnswerResult = (typeof ANSWER_RESULT)[keyof typeof ANSWER_RESULT];
 
+// 成绩复核状态（与后端 constants.ReviewStatus* 对应；pending 期间成绩锁定）。
+export const REVIEW_STATUS = {
+  PENDING: 'pending',
+  ADJUSTED: 'adjusted',
+  REJECTED: 'rejected',
+} as const;
+
+export type ReviewStatus = (typeof REVIEW_STATUS)[keyof typeof REVIEW_STATUS];
+
+// 成绩复核窗口：成绩发布后 24 小时（与后端 constants.ReviewWindow 对应）。
+export const REVIEW_WINDOW_HOURS = 24;
+
 export const WRONG_BOOK_STATUS = {
   ACTIVE: 'active',
   RESOLVED: 'resolved',

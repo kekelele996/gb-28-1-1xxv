@@ -62,11 +62,16 @@ func httpStatusFromCode(code int) int {
 		return http.StatusForbidden
 	case constants.CodeNotFound, constants.CodeUserNotFound, constants.CodeQuestionNotFound,
 		constants.CodeExamNotFound, constants.CodeRecordNotFound, constants.CodeWrongBookNotFound,
-		constants.CodeAuditNotFound:
+		constants.CodeAuditNotFound, constants.CodeReviewNotFound:
 		return http.StatusNotFound
 	case constants.CodeConflict, constants.CodeDuplicateKey, constants.CodeUserEmailExists,
-		constants.CodeRecordAlreadyDone, constants.CodeWrongBookExists:
+		constants.CodeRecordAlreadyDone, constants.CodeWrongBookExists,
+		constants.CodeReviewDuplicate, constants.CodeReviewLocked, constants.CodeReviewConflict:
 		return http.StatusConflict
+	case constants.CodeReviewNotOwner:
+		return http.StatusForbidden
+	case constants.CodeReviewWindowClose:
+		return http.StatusBadRequest
 	case constants.CodeRateLimited:
 		return http.StatusTooManyRequests
 	default:

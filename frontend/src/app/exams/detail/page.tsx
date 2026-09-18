@@ -71,13 +71,26 @@ function ExamDetail() {
 
   const recordColumns: Column<ExamRecord>[] = [
     { key: 'student_name', title: '学生', render: (r) => <span>{r.student_name}</span> },
-    { key: 'status', title: '状态', render: (r) => <StatusBadge text={r.status === 'graded' ? '已批改' : r.status === 'submitted' ? '已提交' : '答题中'} color={r.status === 'graded' ? 'green' : r.status === 'submitted' ? 'blue' : 'orange'} /> },
+    {
+      key: 'status',
+      title: '状态',
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <StatusBadge text={r.status === 'graded' ? '已批改' : r.status === 'submitted' ? '已提交' : '答题中'} color={r.status === 'graded' ? 'green' : r.status === 'submitted' ? 'blue' : 'orange'} />
+          {r.review?.status === 'pending' && <StatusBadge text="待复核(已锁定)" color="red" />}
+          {r.review?.status === 'adjusted' && <StatusBadge text="复核已调整" color="green" />}
+          {r.review?.status === 'rejected' && <StatusBadge text="复核维持原分" color="gray" />}
+        </div>
+      ),
+    },
     { key: 'objective_score', title: '客观题分', render: (r) => <span>{r.objective_score}</span> },
     { key: 'final_score', title: '最终分', render: (r) => <span className="font-medium">{r.final_score || '-'}</span> },
     { key: 'cheat_count', title: '切屏次数', render: (r) => <span className={r.cheat_count > 0 ? 'text-red-600' : ''}>{r.cheat_count}</span> },
     { key: 'started_at', title: '开始时间', render: (r) => <span className="text-xs">{formatDateTime(r.started_at)}</span> },
     { key: 'actions', title: '操作', render: (r) => (
-        <button onClick={() => router.push(`/records/review?recordId=${r.id}`)} className="text-brand-600 hover:underline">查看/批改</button>
+        <button onClick={() => router.push(`/records/review?recordId=${r.id}`)} className="text-brand-600 hover:underline">
+          {r.review?.status === 'pending' ? '去复核' : '查看/批改'}
+        </button>
       ) },
   ];
 

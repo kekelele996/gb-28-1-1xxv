@@ -86,6 +86,55 @@ export interface AttemptQuestion {
   marked?: boolean;
 }
 
+export interface ScoreSnapshot {
+  question_id: string;
+  type: string;
+  subjective_score: number;
+  got_score: number;
+  result: string;
+  comment?: string;
+}
+
+export interface ReviewScoreChange {
+  question_id: string;
+  type: string;
+  before: number;
+  after: number;
+}
+
+export interface ReviewAudit {
+  requested_by: string;
+  requested_by_name: string;
+  requested_at: string;
+  request_ip?: string;
+  request_request_id?: string;
+  handled_by?: string;
+  handled_by_name?: string;
+  handled_at?: string | null;
+  handle_ip?: string;
+  handle_request_id?: string;
+  before_objective_score: number;
+  before_subjective_score: number;
+  before_final_score: number;
+  before_passed: boolean;
+  after_objective_score: number;
+  after_subjective_score: number;
+  after_final_score: number;
+  after_passed: boolean;
+  score_changes?: ReviewScoreChange[];
+}
+
+export interface GradeReview {
+  status: string; // pending / adjusted / rejected
+  reason: string;
+  teacher_opinion?: string;
+  before_scores?: ScoreSnapshot[];
+  after_scores?: ScoreSnapshot[];
+  audit: ReviewAudit;
+  requested_at: string;
+  handled_at?: string | null;
+}
+
 export interface ExamRecord {
   id: string;
   exam_id: string;
@@ -95,13 +144,17 @@ export interface ExamRecord {
   status: string;
   started_at: string;
   submitted_at?: string | null;
+  graded_at?: string | null;
   objective_score: number;
   subjective_score: number;
   final_score: number;
   pass_score: number;
+  passed: boolean;
   cheat_count: number;
   auto_submitted: boolean;
   questions: AttemptQuestion[];
+  review?: GradeReview | null;
+  review_deadline?: string | null;
   created_at: string;
 }
 

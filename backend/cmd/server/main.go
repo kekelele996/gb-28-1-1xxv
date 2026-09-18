@@ -66,6 +66,7 @@ func main() {
 	questionSvc := service.NewQuestionService(questionRepo, util.Logger)
 	examSvc := service.NewExamService(examRepo, questionSvc, util.Logger)
 	recordSvc := service.NewExamRecordService(recordRepo, examSvc, util.Logger)
+	reviewSvc := service.NewGradeReviewService(recordRepo, util.Logger)
 	wrongBookSvc := service.NewWrongBookService(wrongBookRepo, questionSvc, recordSvc, util.Logger)
 	auditSvc := service.NewAuditService(auditRepo, util.Logger)
 
@@ -76,12 +77,13 @@ func main() {
 	}
 
 	hs := &router.Handlers{
-		User:       handler.NewUserHandler(userSvc, util.Logger),
-		Question:   handler.NewQuestionHandler(questionSvc, util.Logger),
-		Exam:       handler.NewExamHandler(examSvc, util.Logger),
-		ExamRecord: handler.NewExamRecordHandler(recordSvc, util.Logger),
-		WrongBook:  handler.NewWrongBookHandler(wrongBookSvc, util.Logger),
-		Audit:      handler.NewAuditHandler(auditSvc, util.Logger),
+		User:        handler.NewUserHandler(userSvc, util.Logger),
+		Question:    handler.NewQuestionHandler(questionSvc, util.Logger),
+		Exam:        handler.NewExamHandler(examSvc, util.Logger),
+		ExamRecord:  handler.NewExamRecordHandler(recordSvc, util.Logger),
+		GradeReview: handler.NewGradeReviewHandler(reviewSvc, util.Logger),
+		WrongBook:   handler.NewWrongBookHandler(wrongBookSvc, util.Logger),
+		Audit:       handler.NewAuditHandler(auditSvc, util.Logger),
 	}
 
 	engine := gin.New()

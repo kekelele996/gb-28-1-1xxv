@@ -25,6 +25,8 @@ func EnsureIndexes(ctx context.Context, db *mongo.Database) error {
 		{"exams", bson.D{{Key: "status", Value: 1}, {Key: "subject", Value: 1}}, nil},
 		{"exam_records", bson.D{{Key: "exam_id", Value: 1}, {Key: "student_id", Value: 1}}, nil},
 		{"exam_records", bson.D{{Key: "status", Value: 1}}, nil},
+		// 成绩复核：按 review.status 过滤待复核、按申请时间排序（学生「仅一次」由条件原子更新保证）。
+		{"exam_records", bson.D{{Key: "review.status", Value: 1}, {Key: "review.requested_at", Value: 1}}, nil},
 		{"wrong_books", bson.D{{Key: "student_id", Value: 1}, {Key: "question_id", Value: 1}}, options.Index().SetUnique(true)},
 		{"audit_logs", bson.D{{Key: "created_at", Value: -1}}, nil},
 		{"audit_logs", bson.D{{Key: "module", Value: 1}, {Key: "action", Value: 1}}, nil},
